@@ -14,5 +14,9 @@ proc main =
   exec("nim js examples/mediaplayer/playerapp.nim")
   exec("nim js examples/carousel/carousel.nim")
   exec("nim js -d:nodejs -r tests/difftest.nim")
+  exec("nim c tests/nativehtmlgen.nim")
+
+  for test in os.walkFiles("examples/*.nim"):
+    exec("nim js " & test)
 
 main()

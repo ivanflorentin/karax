@@ -1,5 +1,5 @@
 
-import vdom, karax, karaxdsl, jstrutils, compact, localstorage
+import karax / [vdom, karax, karaxdsl, jstrutils, compact, localstorage]
 
 type
   Filter = enum
@@ -45,19 +45,19 @@ proc onTodoEnter(ev: Event; n: VNode) =
   n.value = ""
 
 proc removeHandler(ev: Event; n: VNode) =
-  updateEntry(n.key, cstring(nil), false)
+  updateEntry(n.index, cstring(nil), false)
 
 proc editHandler(ev: Event; n: VNode) =
-  selectedEntry = n.key
+  selectedEntry = n.index
 
 proc focusLost(ev: Event; n: VNode) = selectedEntry = -1
 
 proc editEntry(ev: Event; n: VNode) =
-  setEntryContent(n.key, n.value)
+  setEntryContent(n.index, n.value)
   selectedEntry = -1
 
 proc toggleEntry(ev: Event; n: VNode) =
-  let id = n.key
+  let id = n.index
   markAsCompleted(id, not isCompleted(id))
 
 proc onAllDone(ev: Event; n: VNode) =
@@ -71,9 +71,6 @@ proc clearCompleted(ev: Event, n: VNode) =
 proc toClass(completed: bool): cstring =
   (if completed: cstring"completed" else: cstring(nil))
 
-proc toChecked(checked: bool): cstring =
-  (if checked: cstring"checked" else: cstring(nil))
-
 proc selected(v: Filter): cstring =
   (if filter == v: cstring"selected" else: cstring(nil))
 
@@ -83,16 +80,16 @@ proc createEntry(id: int; d: cstring; completed, selected: bool): VNode {.compac
       if not selected:
         tdiv(class = "view"):
           input(class = "toggle", `type` = "checkbox", checked = toChecked(completed),
-                onclick=toggleEntry, key=id)
-          label(onDblClick=editHandler, key=id):
+                onclick=toggleEntry, index=id)
+          label(onDblClick=editHandler, index=id):
             text d
-          button(class = "destroy", key=id, onclick=removeHandler)
+          button(class = "destroy", index=id, onclick=removeHandler)
       else:
-        input(class = "edit", name = "title", key=id,
+        input(class = "edit", name = "title", index=id,
           onblur = focusLost,
           onkeyupenter = editEntry, value = d, setFocus=true)
 
-proc makeFooter(entriesCount, completedCount: int): VNode {.compact.} =
+proc makeFooter(entriesCount, completedCount: int): VNode =
   result = buildHtml(footer(class = "footer")):
     span(class = "todo-count"):
       strong:
@@ -118,7 +115,10 @@ proc makeHeader(): VNode {.compact.} =
     input(class = "new-todo", placeholder="What needs to be done?", name = "newTodo",
           onkeyupenter = onTodoEnter, setFocus)
 
-proc createDom(): VNode =
+proc createDom(data: RouterData): VNode =
+  if data.hashPart == "#/": filter = all
+  elif data.hashPart == "#/completed": filter = completed
+  elif data.hashPart == "#/active": filter = active
   result = buildHtml(tdiv(class="todomvc-wrapper")):
     section(class = "todoapp"):
       makeHeader()
@@ -143,12 +143,6 @@ proc createDom(): VNode =
               inc completedCount, ord(d1)
               inc entriesCount
       makeFooter(entriesCount, completedCount)
-
-setOnHashChange(proc(hash: cstring) =
-  if hash == "#/": filter = all
-  elif hash == "#/completed": filter = completed
-  elif hash == "#/active": filter = active
-)
 
 if hasItem(lenSuffix):
   entriesLen = parseInt getItem(lenSuffix)
